@@ -55,7 +55,7 @@ player_videos (プレイヤー-動画の紐付け)
 2. 必要なライブラリのインストール
    - Google Sheets API関連ライブラリ
    - Cloudflare R2 SDK
-   - react-hook-form + zod（フォーム管理）
+   - jotai + zod（フォーム管理）
 3. 外部サービス連携設定
    - Google Sheets API認証設定
    - Cloudflare R2バケット設定
