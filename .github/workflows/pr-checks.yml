@@ -27,7 +27,7 @@ jobs:
         uses: ./.github/actions/setup-node
 
       - name: Run lint check
-        run: npm run lint
+        run: npx biome check . --error-on-warnings
 
   build:
     name: Build Check
