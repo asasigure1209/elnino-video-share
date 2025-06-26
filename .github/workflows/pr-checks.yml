@@ -1,0 +1,43 @@
+name: PR Checks
+
+on: pull_request
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js with dependencies
+        uses: ./.github/actions/setup-node
+
+      - name: Run tests
+        run: npm test
+
+  lint:
+    name: Lint Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js with dependencies
+        uses: ./.github/actions/setup-node
+
+      - name: Run lint check
+        run: npx biome check . --error-on-warnings
+
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js with dependencies
+        uses: ./.github/actions/setup-node
+
+      - name: Build application
+        run: npm run build
