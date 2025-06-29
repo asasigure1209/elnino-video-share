@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 
+// memo: RSCでモックできなくて一旦諦め
 test.describe("ホームページ", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/");
@@ -23,7 +24,7 @@ test.describe("ホームページ", () => {
     // Check table headers
     const noHeader = page.getByText("No");
     await expect(noHeader).toBeVisible();
-    
+
     const entryHeader = page.getByText("エントリー名");
     await expect(entryHeader).toBeVisible();
 

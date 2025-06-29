@@ -16,22 +16,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **認証**: middleware.ts によるBasic認証（管理者機能）
 - **ホスティング**: AppRun (さくらインターネット)
 
-### データベース設計
-```
-players (プレイヤー情報)
-├── id: プレイヤーID
-└── name: プレイヤー名
+### データベース設計（Google Sheets）
 
-videos (動画情報)
-├── id: 動画ID
-├── name: 動画ファイル名
-└── type: 動画種別（予選|TOP16|TOP8|TOP4|3位決定戦|決勝戦）
+#### Googleスプレッドシート構成
+- **スプレッドシート名**: 「エルニーニョ動画配布サイト_データベース」
+- **シート数**: 3つのシート
 
-player_videos (プレイヤー-動画の紐付け)
-├── id: マッピングID
-├── player_id: プレイヤーID
-└── video_id: 動画ID
+#### 1. playersシート（プレイヤー情報）
+| 列 | カラム名 | データ型 | 説明 | 例 |
+|---|---|---|---|---|
+| A | id | 数値 | プレイヤーの一意ID | 1, 2, 3... |
+| B | name | 文字列 | プレイヤー名 | るぐら, 風龍, せせらぎ |
+
+#### 2. videosシート（動画情報）
+| 列 | カラム名 | データ型 | 説明 | 例 |
+|---|---|---|---|---|
+| A | id | 数値 | 動画の一意ID | 1, 2, 3... |
+| B | name | 文字列 | 動画ファイル名（拡張子含む） | rukura_yosen.mp4 |
+| C | type | 文字列 | 動画種別 | 予選, TOP16, TOP8, TOP4, 3位決定戦, 決勝戦 |
+
+#### 3. player_videosシート（プレイヤー-動画の紐付け）
+| 列 | カラム名 | データ型 | 説明 | 例 |
+|---|---|---|---|---|
+| A | id | 数値 | マッピングの一意ID | 1, 2, 3... |
+| B | player_id | 数値 | playersシートのid参照 | 1, 2, 3 |
+| C | video_id | 数値 | videosシートのid参照 | 1, 2, 3 |
+
+#### データ関係性
 ```
+players (1) ←→ (多) player_videos (多) ←→ (1) videos
+```
+
+#### 重要な制約
+- **ヘッダー行**: 各シートの1行目は必ずカラム名
+- **id**: 各シートで一意の数値（自動増分推奨）
+- **外部キー**: player_id, video_id は対応するシートのid参照
+- **動画種別**: 予選|TOP16|TOP8|TOP4|3位決定戦|決勝戦 のみ許可
 
 ## 画面構成
 
@@ -141,7 +161,7 @@ export const config = {
 ### 確認コマンド実行手順
 1. `npm run lint` - リントチェック
 2. `npm run test` - Vitestテスト実行
-3. `npm run test:e2e` - E2Eテスト実行
+3. `npm run test:e2e -- --reporter=line` - E2Eテスト実行
 4. `npm run build` - ビルドチェック
 
 ### 実装工程表の更新
