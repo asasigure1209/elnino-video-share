@@ -1,26 +1,38 @@
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
+import { MainLayout } from "../../shared/ui"
 import { HomePage } from "."
 
 describe("Home", () => {
-  it("renders the main heading", () => {
-    render(<HomePage />)
+  it("renders the main logo when wrapped in MainLayout", () => {
+    render(
+      <MainLayout>
+        <HomePage />
+      </MainLayout>,
+    )
 
-    const heading = screen.getByRole("heading", { level: 1 })
-    expect(heading).toHaveTextContent("エルニーニョ動画配布サイト")
+    const logo = screen.getByAltText("エルニーニョ vol.10")
+    expect(logo).toBeInTheDocument()
+    expect(logo).toHaveAttribute("src", "/mainLogo.svg")
   })
 
-  it("renders the player list section", () => {
+  it("renders player data", () => {
     render(<HomePage />)
 
-    const playerListHeading = screen.getByRole("heading", { level: 2 })
-    expect(playerListHeading).toHaveTextContent(/プレイヤー一覧/)
+    // プレイヤー名が表示されているか確認
+    expect(screen.getByText("るぐら")).toBeInTheDocument()
+    expect(screen.getByText("風龍")).toBeInTheDocument()
+    expect(screen.getByText("せせらぎ")).toBeInTheDocument()
+
+    // 動画ボタンが表示されているか確認
+    const videoButtons = screen.getAllByText("動画")
+    expect(videoButtons).toHaveLength(3)
   })
 
-  it("renders the description text", () => {
+  it("renders table headers", () => {
     render(<HomePage />)
 
-    const description = screen.getByText("参加プレイヤーの一覧を表示します")
-    expect(description).toBeInTheDocument()
+    expect(screen.getByText("No")).toBeInTheDocument()
+    expect(screen.getByText("エントリー名")).toBeInTheDocument()
   })
 })

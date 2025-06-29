@@ -1,3 +1,17 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-on-primary: #FFDF2B;        /* メインボタンの文字色（黄色） */
+  --color-primary: #1E1E1E;            /* ボタン背景色（黒） */
+  --color-primary-hover: #FDD835;      /* ホバー時の色 */
+  --color-surface: #121212;            /* メイン背景色（ダーク） */
+  --color-on-surface: #FFFFFF;         /* テキスト色（白） */
+  --color-primary-container: #FFFFFF;  /* コンテナ背景色 */
+  --color-on-primary-container: #3C3C3C; /* コンテナ内テキスト色 */
+}
+
+/* エルニーニョサイト用ダークテーマ（非Tailwind用CSS変数） */
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+}
