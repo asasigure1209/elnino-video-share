@@ -14,20 +14,31 @@ test.describe("ホームページ", () => {
     const main = page.locator("main");
     await expect(main).toBeVisible();
 
-    // Check main heading
-    const mainHeading = page.getByRole("heading", {
-      name: "エルニーニョ動画配布サイト",
-    });
-    await expect(mainHeading).toBeVisible();
+    // Check main logo image
+    const logo = page.getByAltText("エルニーニョ vol.10");
+    await expect(logo).toBeVisible();
   });
 
   test("should display player list section", async ({ page }) => {
-    // Check player list section
-    const playerSection = page.getByRole("heading", { name: /プレイヤー一覧/ });
-    await expect(playerSection).toBeVisible();
+    // Check table headers
+    const noHeader = page.getByText("No");
+    await expect(noHeader).toBeVisible();
+    
+    const entryHeader = page.getByText("エントリー名");
+    await expect(entryHeader).toBeVisible();
 
-    // Check description
-    const description = page.getByText("参加プレイヤーの一覧を表示します");
-    await expect(description).toBeVisible();
+    // Check for player data
+    const player1 = page.getByText("るぐら");
+    await expect(player1).toBeVisible();
+
+    const player2 = page.getByText("風龍");
+    await expect(player2).toBeVisible();
+
+    const player3 = page.getByText("せせらぎ");
+    await expect(player3).toBeVisible();
+
+    // Check for video buttons
+    const videoButtons = page.getByText("動画");
+    await expect(videoButtons.first()).toBeVisible();
   });
 });
