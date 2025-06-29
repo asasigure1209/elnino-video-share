@@ -1,5 +1,10 @@
 import { HomePage } from "../src/pages/home";
+import { MainLayout } from "../src/shared/ui";
 
 export default function RootPage() {
-  return <HomePage />;
+  return (
+    <MainLayout>
+      <HomePage />
+    </MainLayout>
+  );
 }

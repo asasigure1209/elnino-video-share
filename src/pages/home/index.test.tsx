@@ -1,27 +1,26 @@
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
+import { MainLayout } from "../../shared/ui"
 import { HomePage } from "."
 
 describe("Home", () => {
-  it("renders the main heading", () => {
-    render(<HomePage />)
+  it("renders the main logo when wrapped in MainLayout", () => {
+    render(
+      <MainLayout>
+        <HomePage />
+      </MainLayout>,
+    )
 
-    const heading = screen.getByRole("heading", { level: 1 })
-    expect(heading).toHaveTextContent("エルニーニョ")
-  })
-
-  it("renders the version text", () => {
-    render(<HomePage />)
-
-    const versionText = screen.getByText("vol.10")
-    expect(versionText).toBeInTheDocument()
+    const logo = screen.getByAltText("エルニーニョ vol.10")
+    expect(logo).toBeInTheDocument()
+    expect(logo).toHaveAttribute("src", "/mainLogo.svg")
   })
 
   it("renders player data", () => {
     render(<HomePage />)
 
     // プレイヤー名が表示されているか確認
-    expect(screen.getByText("るくら")).toBeInTheDocument()
+    expect(screen.getByText("るぐら")).toBeInTheDocument()
     expect(screen.getByText("風龍")).toBeInTheDocument()
     expect(screen.getByText("せせらぎ")).toBeInTheDocument()
 
