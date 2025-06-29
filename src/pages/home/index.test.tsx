@@ -7,20 +7,33 @@ describe("Home", () => {
     render(<HomePage />)
 
     const heading = screen.getByRole("heading", { level: 1 })
-    expect(heading).toHaveTextContent("エルニーニョ動画配布サイト")
+    expect(heading).toHaveTextContent("エルニーニョ")
   })
 
-  it("renders the player list section", () => {
+  it("renders the version text", () => {
     render(<HomePage />)
 
-    const playerListHeading = screen.getByRole("heading", { level: 2 })
-    expect(playerListHeading).toHaveTextContent(/プレイヤー一覧/)
+    const versionText = screen.getByText("vol.10")
+    expect(versionText).toBeInTheDocument()
   })
 
-  it("renders the description text", () => {
+  it("renders player data", () => {
     render(<HomePage />)
 
-    const description = screen.getByText("参加プレイヤーの一覧を表示します")
-    expect(description).toBeInTheDocument()
+    // プレイヤー名が表示されているか確認
+    expect(screen.getByText("るくら")).toBeInTheDocument()
+    expect(screen.getByText("風龍")).toBeInTheDocument()
+    expect(screen.getByText("せせらぎ")).toBeInTheDocument()
+
+    // 動画ボタンが表示されているか確認
+    const videoButtons = screen.getAllByText("動画")
+    expect(videoButtons).toHaveLength(3)
+  })
+
+  it("renders table headers", () => {
+    render(<HomePage />)
+
+    expect(screen.getByText("No")).toBeInTheDocument()
+    expect(screen.getByText("エントリー名")).toBeInTheDocument()
   })
 })

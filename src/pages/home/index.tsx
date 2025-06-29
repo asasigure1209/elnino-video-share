@@ -1,25 +1,24 @@
+import { PlayerList } from "../../widgets/player-list"
+
 export function HomePage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <h1 className="text-4xl font-bold text-center">
-          エルニーニョ動画配布サイト
-        </h1>
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <div className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30">
-          <h2 className="mb-3 text-2xl font-semibold">
-            プレイヤー一覧{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            参加プレイヤーの一覧を表示します
+    <div className="min-h-screen bg-surface">
+      <div className="max-w-[640px] mx-auto">
+        {/* ヘッダー */}
+        <header className="py-8 px-4">
+          <h1 className="text-on-primary text-4xl font-bold text-center">
+            エルニーニョ
+          </h1>
+          <p className="text-on-primary text-2xl font-bold text-center mt-2">
+            vol.10
           </p>
-        </div>
+        </header>
+
+        {/* メインコンテンツ */}
+        <main className="px-4 pb-8">
+          <PlayerList />
+        </main>
       </div>
-    </main>
+    </div>
   )
 }
