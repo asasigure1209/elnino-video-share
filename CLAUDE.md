@@ -161,7 +161,7 @@ export const config = {
 ### 確認コマンド実行手順
 1. `npm run lint` - リントチェック
 2. `npm run test` - Vitestテスト実行
-3. `npm run test:e2e` - E2Eテスト実行
+3. `npm run test:e2e -- --reporter=line` - E2Eテスト実行
 4. `npm run build` - ビルドチェック
 
 ### 実装工程表の更新
