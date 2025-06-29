@@ -14,7 +14,7 @@ vi.mock("../../shared/api/google-sheets", () => ({
 
 // React cache のモック（実際の関数をそのまま返すように）
 vi.mock("react", () => ({
-  cache: (fn: any) => fn,
+  cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
 }))
 
 // モック対象のインポート
