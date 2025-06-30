@@ -1,23 +1,11 @@
+import type { Player } from "../../entities/player/types"
 import { Button } from "../../shared/ui/button"
 
-interface Player {
-  id: number
-  name: string
-  entryNo: number
-}
-
 interface PlayerListProps {
-  players?: Player[]
+  players: Player[]
 }
 
-// モックデータ（実装工程表の次のフェーズでServer Componentから取得予定）
-const mockPlayers: Player[] = [
-  { id: 1, name: "るぐら", entryNo: 1 },
-  { id: 2, name: "風龍", entryNo: 2 },
-  { id: 3, name: "せせらぎ", entryNo: 3 },
-]
-
-export function PlayerList({ players = mockPlayers }: PlayerListProps) {
+export function PlayerList({ players }: PlayerListProps) {
   return (
     <div className="w-full">
       {/* テーブルヘッダー */}
@@ -34,7 +22,7 @@ export function PlayerList({ players = mockPlayers }: PlayerListProps) {
             key={player.id}
             className="grid grid-cols-3 gap-4 items-center py-3"
           >
-            <div className="text-on-surface text-lg">{player.entryNo}</div>
+            <div className="text-on-surface text-lg">{player.id}</div>
             <div className="text-on-surface text-lg">{player.name}</div>
             <div className="text-center">
               <Button
