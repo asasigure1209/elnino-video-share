@@ -7,6 +7,7 @@ interface ButtonProps {
   variant?: "primary"
   size?: "sm" | "md" | "lg"
   className?: string
+  disabled?: boolean
 }
 
 export function Button({
@@ -16,6 +17,7 @@ export function Button({
   variant = "primary",
   size = "md",
   className = "",
+  disabled = false,
 }: ButtonProps) {
   const baseClasses = "font-bold rounded transition-colors duration-200"
 
@@ -29,7 +31,8 @@ export function Button({
     lg: "px-6 py-3 text-lg",
   }
 
-  const allClasses = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`
+  const disabledClasses = disabled ? "opacity-50 cursor-not-allowed" : ""
+  const allClasses = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${disabledClasses} ${className}`
 
   if (href) {
     return (
@@ -40,7 +43,12 @@ export function Button({
   }
 
   return (
-    <button type="button" onClick={onClick} className={allClasses}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={allClasses}
+      disabled={disabled}
+    >
       {children}
     </button>
   )

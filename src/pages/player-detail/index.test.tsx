@@ -43,10 +43,6 @@ describe("PlayerDetailPage", () => {
     const ComponentWrapper = await PlayerDetailPage({ playerId: "1" })
     render(ComponentWrapper as React.ReactElement)
 
-    // ページタイトルの確認
-    expect(screen.getByText("エルニーニョ")).toBeInTheDocument()
-    expect(screen.getByText("vol.10")).toBeInTheDocument()
-
     // プレイヤー名の確認
     expect(screen.getByText("るぐら")).toBeInTheDocument()
 

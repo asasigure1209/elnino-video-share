@@ -1,6 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import type { PlayerVideoWithDetails } from "../../entities/player-video/types"
+import { downloadVideo } from "../../features/download-video/actions"
 import { Button } from "../../shared/ui/button"
 
 interface VideoListProps {
@@ -8,6 +10,10 @@ interface VideoListProps {
 }
 
 export function VideoList({ videos }: VideoListProps) {
+  const [downloadingVideos, setDownloadingVideos] = useState<Set<string>>(
+    new Set(),
+  )
+
   // 動画を種別でグループ化
   const groupedVideos = videos.reduce(
     (acc, video) => {
@@ -22,6 +28,48 @@ export function VideoList({ videos }: VideoListProps) {
 
   // 動画種別の表示順序を定義
   const typeOrder = ["予選", "Best16", "Best8", "Best4", "3位決定戦", "決勝戦"]
+
+  // 動画ダウンロード処理
+  async function handleDownload(videoName: string) {
+    // 既にダウンロード中の場合は無視
+    if (downloadingVideos.has(videoName)) {
+      return
+    }
+
+    try {
+      // ダウンロード開始状態に設定
+      setDownloadingVideos((prev) => new Set(prev).add(videoName))
+
+      // Server Actionを呼び出してダウンロードURLを取得
+      const result = await downloadVideo(videoName)
+
+      if (!result.success) {
+        alert(`エラー: ${result.error}`)
+        return
+      }
+
+      if (result.downloadUrl) {
+        // 新しいタブでダウンロードページを開く
+        const link = document.createElement("a")
+        link.href = result.downloadUrl
+        link.download = videoName
+        link.target = "_blank"
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      }
+    } catch (error) {
+      console.error("Download error:", error)
+      alert("ダウンロードに失敗しました")
+    } finally {
+      // ダウンロード状態をリセット
+      setDownloadingVideos((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(videoName)
+        return newSet
+      })
+    }
+  }
 
   return (
     <div className="w-full">
@@ -54,8 +102,9 @@ export function VideoList({ videos }: VideoListProps) {
                     onClick={() => handleDownload(video.video_name)}
                     size="sm"
                     className="min-w-[60px]"
+                    disabled={downloadingVideos.has(video.video_name)}
                   >
-                    DL
+                    {downloadingVideos.has(video.video_name) ? "..." : "DL"}
                   </Button>
                 </div>
               ))}
@@ -73,11 +122,4 @@ export function VideoList({ videos }: VideoListProps) {
       )}
     </div>
   )
-}
-
-// ダウンロード処理（プレースホルダー）
-function handleDownload(videoName: string) {
-  // TODO: 実際のダウンロード処理を実装
-  console.log(`Downloading video: ${videoName}`)
-  alert(`${videoName} のダウンロードを開始します（未実装）`)
 }
