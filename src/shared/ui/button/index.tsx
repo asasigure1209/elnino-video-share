@@ -8,6 +8,7 @@ interface ButtonProps {
   size?: "sm" | "md" | "lg"
   className?: string
   disabled?: boolean
+  type?: "button" | "submit" | "reset"
 }
 
 export function Button({
@@ -18,6 +19,7 @@ export function Button({
   size = "md",
   className = "",
   disabled = false,
+  type = "button",
 }: ButtonProps) {
   const baseClasses = "font-bold rounded transition-colors duration-200"
 
@@ -44,7 +46,7 @@ export function Button({
 
   return (
     <button
-      type="button"
+      type={type}
       onClick={onClick}
       className={allClasses}
       disabled={disabled}

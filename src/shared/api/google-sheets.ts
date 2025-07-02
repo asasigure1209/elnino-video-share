@@ -119,3 +119,53 @@ export async function clearSheetRange(sheetName: string, range: string) {
     throw error
   }
 }
+
+// 指定した行を物理的に削除
+export async function deleteSheetRow(sheetName: string, rowIndex: number) {
+  const sheets = getGoogleSheetsClient()
+  const spreadsheetId = getSpreadsheetId()
+
+  try {
+    // まずシートIDを取得
+    const spreadsheetResponse = await sheets.spreadsheets.get({
+      spreadsheetId,
+    })
+
+    const sheet = spreadsheetResponse.data.sheets?.find(
+      (s) => s.properties?.title === sheetName,
+    )
+
+    if (!sheet || sheet.properties?.sheetId === undefined) {
+      throw new Error(`Sheet "${sheetName}" not found`)
+    }
+
+    const sheetId = sheet.properties.sheetId
+
+    // 行を削除（0ベースのインデックス）
+    const response = await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: sheetId,
+                dimension: "ROWS",
+                startIndex: rowIndex,
+                endIndex: rowIndex + 1,
+              },
+            },
+          },
+        ],
+      },
+    })
+
+    return response.data
+  } catch (error) {
+    console.error(
+      `Error deleting row ${rowIndex} in sheet ${sheetName}:`,
+      error,
+    )
+    throw error
+  }
+}

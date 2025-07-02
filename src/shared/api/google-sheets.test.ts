@@ -9,6 +9,8 @@ const mockSheetsAPI = vi.hoisted(() => ({
       update: vi.fn(),
       clear: vi.fn(),
     },
+    get: vi.fn(),
+    batchUpdate: vi.fn(),
   },
 }))
 
@@ -29,6 +31,7 @@ vi.mock("googleapis", () => ({
 import {
   appendSheetData,
   clearSheetRange,
+  deleteSheetRow,
   getGoogleSheetsClient,
   getSheetData,
   getSpreadsheetId,
@@ -272,6 +275,135 @@ describe("Google Sheets API", () => {
       await expect(clearSheetRange("players", "A2:B2")).rejects.toThrow(
         apiError,
       )
+    })
+  })
+
+  describe("deleteSheetRow", () => {
+    it("should delete sheet row successfully", async () => {
+      // Given: APIが正常なレスポンスを返す
+      const mockSpreadsheetResponse = {
+        data: {
+          sheets: [
+            {
+              properties: {
+                title: "players",
+                sheetId: 123,
+              },
+            },
+          ],
+        },
+      }
+      const mockBatchUpdateResponse = { data: { replies: [] } }
+
+      mockSheetsAPI.spreadsheets.get.mockResolvedValue(mockSpreadsheetResponse)
+      mockSheetsAPI.spreadsheets.batchUpdate.mockResolvedValue(
+        mockBatchUpdateResponse,
+      )
+
+      // When: シートの行を削除する
+      const result = await deleteSheetRow("players", 1)
+
+      // Then: 正しいAPIが呼ばれる
+      expect(result).toEqual(mockBatchUpdateResponse.data)
+      expect(mockSheetsAPI.spreadsheets.get).toHaveBeenCalledWith({
+        spreadsheetId: "test-spreadsheet-id",
+      })
+      expect(mockSheetsAPI.spreadsheets.batchUpdate).toHaveBeenCalledWith({
+        spreadsheetId: "test-spreadsheet-id",
+        requestBody: {
+          requests: [
+            {
+              deleteDimension: {
+                range: {
+                  sheetId: 123,
+                  dimension: "ROWS",
+                  startIndex: 1,
+                  endIndex: 2,
+                },
+              },
+            },
+          ],
+        },
+      })
+    })
+
+    it("should delete sheet row successfully when sheetId is 0", async () => {
+      // Given: sheetIdが0のシート（最初のシート）
+      const mockSpreadsheetResponse = {
+        data: {
+          sheets: [
+            {
+              properties: {
+                title: "players",
+                sheetId: 0, // 0は有効なsheetId
+              },
+            },
+          ],
+        },
+      }
+      const mockBatchUpdateResponse = { data: { replies: [] } }
+
+      mockSheetsAPI.spreadsheets.get.mockResolvedValue(mockSpreadsheetResponse)
+      mockSheetsAPI.spreadsheets.batchUpdate.mockResolvedValue(
+        mockBatchUpdateResponse,
+      )
+
+      // When: シートの行を削除する
+      const result = await deleteSheetRow("players", 1)
+
+      // Then: 正しいAPIが呼ばれる（sheetId: 0でも動作する）
+      expect(result).toEqual(mockBatchUpdateResponse.data)
+      expect(mockSheetsAPI.spreadsheets.batchUpdate).toHaveBeenCalledWith({
+        spreadsheetId: "test-spreadsheet-id",
+        requestBody: {
+          requests: [
+            {
+              deleteDimension: {
+                range: {
+                  sheetId: 0, // sheetId: 0が正しく使用される
+                  dimension: "ROWS",
+                  startIndex: 1,
+                  endIndex: 2,
+                },
+              },
+            },
+          ],
+        },
+      })
+    })
+
+    it("should throw error when sheet is not found", async () => {
+      // Given: 指定されたシートが存在しない
+      const mockSpreadsheetResponse = {
+        data: {
+          sheets: [
+            {
+              properties: {
+                title: "other-sheet",
+                sheetId: 456,
+              },
+            },
+          ],
+        },
+      }
+
+      mockSheetsAPI.spreadsheets.get.mockResolvedValue(mockSpreadsheetResponse)
+
+      // When: 存在しないシートの行を削除する
+      // Then: エラーが投げられる
+      await expect(deleteSheetRow("players", 1)).rejects.toThrow(
+        'Sheet "players" not found',
+      )
+    })
+
+    it("should throw error when API call fails", async () => {
+      // Given: APIがエラーを返す
+      const apiError = new Error("API Error")
+      mockSheetsAPI.spreadsheets.get.mockRejectedValue(apiError)
+
+      // When: シートの行を削除する
+      // Then: エラーが投げられる
+      await expect(deleteSheetRow("players", 1)).rejects.toThrow(apiError)
     })
   })
 })

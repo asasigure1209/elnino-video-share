@@ -1,6 +1,7 @@
 import { cache } from "react"
 import {
   appendSheetData,
+  deleteSheetRow,
   getSheetData,
   updateSheetData,
 } from "../../shared/api/google-sheets"
@@ -96,26 +97,30 @@ export async function updatePlayer(data: UpdatePlayerData): Promise<Player> {
   }
 }
 
-// プレイヤーを削除（実際にはnameを空にして無効化）
+// プレイヤーを削除（物理削除）
 export async function deletePlayer(id: number): Promise<void> {
   try {
-    // 現在のプレイヤー一覧を取得
-    const players = await getPlayers()
-    const playerIndex = players.findIndex((p) => p.id === id)
+    // スプレッドシートの全データを取得（削除済みを含む）
+    const allRows = await getSheetData(SHEET_NAME)
 
-    if (playerIndex === -1) {
+    // ヘッダー行をスキップして、削除対象の行を探す
+    const dataRows = allRows.slice(1)
+    const targetRowIndex = dataRows.findIndex((row) => Number(row[0]) === id)
+
+    if (targetRowIndex === -1) {
       throw new Error("指定されたプレイヤーが見つかりません")
     }
 
-    // スプレッドシートの該当行のnameを空にして無効化
-    const rowNumber = playerIndex + 2
-    await updateSheetData(SHEET_NAME, `B${rowNumber}`, [[""]])
+    // スプレッドシートの該当行を物理削除（ヘッダー行があるので+1）
+    const actualRowIndex = targetRowIndex + 1
+    await deleteSheetRow(SHEET_NAME, actualRowIndex)
   } catch (error) {
     console.error("Error deleting player:", error)
     // 特定のエラーメッセージの場合はそのまま再スロー
     if (
       error instanceof Error &&
-      error.message === "指定されたプレイヤーが見つかりません"
+      (error.message === "指定されたプレイヤーが見つかりません" ||
+        error.message.includes('Sheet "players" not found'))
     ) {
       throw error
     }

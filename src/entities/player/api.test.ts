@@ -5,11 +5,13 @@ import type { CreatePlayerData, Player, UpdatePlayerData } from "./types"
 const mockGetSheetData = vi.hoisted(() => vi.fn())
 const mockAppendSheetData = vi.hoisted(() => vi.fn())
 const mockUpdateSheetData = vi.hoisted(() => vi.fn())
+const mockDeleteSheetRow = vi.hoisted(() => vi.fn())
 
 vi.mock("../../shared/api/google-sheets", () => ({
   getSheetData: mockGetSheetData,
   appendSheetData: mockAppendSheetData,
   updateSheetData: mockUpdateSheetData,
+  deleteSheetRow: mockDeleteSheetRow,
 }))
 
 // React cache のモック（実際の関数をそのまま返すように）
@@ -274,7 +276,7 @@ describe("Player API", () => {
 
   describe("deletePlayer", () => {
     it("should delete existing player successfully", async () => {
-      // Given: 削除対象のプレイヤーが存在する
+      // Given: 削除対象のプレイヤーが存在する（全データを取得）
       const mockSheetData = [
         ["id", "name"],
         ["1", "るぐら"],
@@ -282,13 +284,13 @@ describe("Player API", () => {
         ["3", "せせらぎ"],
       ]
       mockGetSheetData.mockResolvedValue(mockSheetData)
-      mockUpdateSheetData.mockResolvedValue({})
+      mockDeleteSheetRow.mockResolvedValue({})
 
       // When: プレイヤーを削除する
       await deletePlayer(2)
 
-      // Then: 名前フィールドが空文字で更新される（論理削除）
-      expect(mockUpdateSheetData).toHaveBeenCalledWith("players", "B3", [[""]])
+      // Then: 該当行が物理削除される（行インデックス2、0ベース）
+      expect(mockDeleteSheetRow).toHaveBeenCalledWith("players", 2)
     })
 
     it("should throw error when player does not exist", async () => {
@@ -308,14 +310,14 @@ describe("Player API", () => {
     })
 
     it("should throw error when API call fails", async () => {
-      // Given: getPlayersは成功するがupdateSheetDataが失敗する
+      // Given: getSheetDataは成功するがdeleteSheetRowが失敗する
       const mockSheetData = [
         ["id", "name"],
         ["1", "るぐら"],
       ]
       mockGetSheetData.mockResolvedValue(mockSheetData)
       const apiError = new Error("Sheets API Error")
-      mockUpdateSheetData.mockRejectedValue(apiError)
+      mockDeleteSheetRow.mockRejectedValue(apiError)
 
       // When: プレイヤーを削除する
       // Then: カスタムエラーメッセージでエラーが投げられる
