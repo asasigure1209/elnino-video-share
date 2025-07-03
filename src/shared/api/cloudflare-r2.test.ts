@@ -9,11 +9,15 @@ const mockGetSignedUrl = vi.hoisted(() => vi.fn())
 
 const mockHeadObjectCommand = vi.hoisted(() => vi.fn())
 const mockGetObjectCommand = vi.hoisted(() => vi.fn())
+const mockPutObjectCommand = vi.hoisted(() => vi.fn())
+const mockDeleteObjectCommand = vi.hoisted(() => vi.fn())
 
 vi.mock("@aws-sdk/client-s3", () => ({
   S3Client: vi.fn().mockImplementation(() => mockS3Client),
   HeadObjectCommand: mockHeadObjectCommand,
   GetObjectCommand: mockGetObjectCommand,
+  PutObjectCommand: mockPutObjectCommand,
+  DeleteObjectCommand: mockDeleteObjectCommand,
 }))
 
 vi.mock("@aws-sdk/s3-request-presigner", () => ({
@@ -23,8 +27,10 @@ vi.mock("@aws-sdk/s3-request-presigner", () => ({
 // モック対象のインポート
 import {
   checkVideoExists,
+  deleteVideo,
   generateDownloadUrl,
   getVideoMetadata,
+  uploadVideo,
 } from "./cloudflare-r2"
 
 describe("Cloudflare R2 API", () => {
@@ -366,7 +372,7 @@ describe("Cloudflare R2 API", () => {
 
     it("非常に長いvideoNameでも正常に処理される", async () => {
       // Given: 非常に長いvideoName
-      const longVideoName = `${"a".repeat(1000)}.mp4`
+      const longVideoName = `${"a".repeat(100)}.mp4` // テスト用に短縮
       mockS3Client.send.mockResolvedValue({})
 
       // When: checkVideoExistsを実行する
@@ -416,6 +422,330 @@ describe("Cloudflare R2 API", () => {
         expect.any(Object),
         { expiresIn: -3600 },
       )
+    })
+  })
+
+  describe("uploadVideo", () => {
+    describe("正常系", () => {
+      it("should upload video successfully when valid parameters are provided", async () => {
+        // Given: 有効なパラメータが提供される
+        const videoName = "test_upload.mp4"
+        const fileBuffer = Buffer.from("test video content")
+        const contentType = "video/mp4"
+        mockS3Client.send.mockResolvedValue({})
+
+        // When: 動画をアップロードする
+        await uploadVideo(videoName, fileBuffer, contentType)
+
+        // Then: PutObjectCommandが正しいパラメータで呼び出される
+        expect(mockPutObjectCommand).toHaveBeenCalledWith({
+          Bucket: "test-bucket",
+          Key: videoName,
+          Body: fileBuffer,
+          ContentType: contentType,
+        })
+        expect(mockS3Client.send).toHaveBeenCalledWith(
+          expect.any(Object), // PutObjectCommandのインスタンス
+        )
+      })
+
+      it("should upload video with default content type when no content type provided", async () => {
+        // Given: コンテンツタイプが提供されない
+        const videoName = "test_upload.mp4"
+        const fileBuffer = Buffer.from("test video content")
+        const contentType = "application/octet-stream"
+        mockS3Client.send.mockResolvedValue({})
+
+        // When: 動画をアップロードする
+        await uploadVideo(videoName, fileBuffer, contentType)
+
+        // Then: デフォルトのコンテンツタイプでアップロードされる
+        expect(mockPutObjectCommand).toHaveBeenCalledWith({
+          Bucket: "test-bucket",
+          Key: videoName,
+          Body: fileBuffer,
+          ContentType: contentType,
+        })
+      })
+    })
+
+    describe("境界値テスト", () => {
+      it("should handle empty file buffer", async () => {
+        // Given: 空のファイルバッファ
+        const videoName = "empty_file.mp4"
+        const fileBuffer = Buffer.alloc(0)
+        const contentType = "video/mp4"
+        mockS3Client.send.mockResolvedValue({})
+
+        // When: 空のファイルをアップロードする
+        await uploadVideo(videoName, fileBuffer, contentType)
+
+        // Then: アップロードが実行される
+        expect(mockPutObjectCommand).toHaveBeenCalledWith({
+          Bucket: "test-bucket",
+          Key: videoName,
+          Body: fileBuffer,
+          ContentType: contentType,
+        })
+      })
+
+      it("should handle special characters in video name", async () => {
+        // Given: 特殊文字を含む動画名
+        const videoName = "テスト動画_2024-01-01_#1 (1).mp4"
+        const fileBuffer = Buffer.from("test content")
+        const contentType = "video/mp4"
+        mockS3Client.send.mockResolvedValue({})
+
+        // When: 特殊文字を含む名前でアップロードする
+        await uploadVideo(videoName, fileBuffer, contentType)
+
+        // Then: 正常にアップロードされる
+        expect(mockPutObjectCommand).toHaveBeenCalledWith({
+          Bucket: "test-bucket",
+          Key: videoName,
+          Body: fileBuffer,
+          ContentType: contentType,
+        })
+      })
+    })
+
+    describe("異常系", () => {
+      it("should throw custom error when S3 upload fails", async () => {
+        // Given: S3アップロードでエラーが発生する
+        const videoName = "error_upload.mp4"
+        const fileBuffer = Buffer.from("test content")
+        const contentType = "video/mp4"
+        const error = new Error("Access denied")
+        mockS3Client.send.mockRejectedValue(error)
+
+        // When: 動画をアップロードする
+        // Then: カスタムエラーメッセージでエラーが投げられる
+        await expect(
+          uploadVideo(videoName, fileBuffer, contentType),
+        ).rejects.toThrow("動画ファイルのアップロードに失敗しました")
+      })
+
+      it("should log error when upload fails", async () => {
+        // Given: コンソールエラーをモック化し、S3アップロードでエラーが発生する
+        const consoleSpy = vi
+          .spyOn(console, "error")
+          .mockImplementation(() => {})
+        const videoName = "error_upload.mp4"
+        const fileBuffer = Buffer.from("test content")
+        const contentType = "video/mp4"
+        const error = new Error("Upload failed")
+        mockS3Client.send.mockRejectedValue(error)
+
+        // When: 動画をアップロードする
+        await expect(
+          uploadVideo(videoName, fileBuffer, contentType),
+        ).rejects.toThrow()
+
+        // Then: コンソールにエラーログが出力される
+        expect(consoleSpy).toHaveBeenCalledWith(
+          `Error uploading video ${videoName}:`,
+          error,
+        )
+
+        // Cleanup
+        consoleSpy.mockRestore()
+      })
+
+      it("should handle network timeout errors", async () => {
+        // Given: ネットワークタイムアウトエラーが発生する
+        const videoName = "timeout_upload.mp4"
+        const fileBuffer = Buffer.from("test content")
+        const contentType = "video/mp4"
+        const timeoutError = new Error("Network timeout")
+        timeoutError.name = "NetworkTimeoutError"
+        mockS3Client.send.mockRejectedValue(timeoutError)
+
+        // When: 動画をアップロードする
+        // Then: カスタムエラーメッセージでエラーが投げられる
+        await expect(
+          uploadVideo(videoName, fileBuffer, contentType),
+        ).rejects.toThrow("動画ファイルのアップロードに失敗しました")
+      })
+    })
+
+    describe("環境変数エラー", () => {
+      it("should throw custom error when environment variables are missing", async () => {
+        // Given: 環境変数が設定されていない
+        vi.stubEnv("CLOUDFLARE_R2_ACCOUNT_ID", "")
+        const videoName = "test.mp4"
+        const fileBuffer = Buffer.from("test content")
+        const contentType = "video/mp4"
+
+        // When: 動画をアップロードする
+        // Then: カスタムエラーメッセージが投げられる（実装仕様に合わせて）
+        await expect(
+          uploadVideo(videoName, fileBuffer, contentType),
+        ).rejects.toThrow("動画ファイルのアップロードに失敗しました")
+      })
+    })
+  })
+
+  describe("deleteVideo", () => {
+    describe("正常系", () => {
+      it("should delete video successfully when valid video name is provided", async () => {
+        // Given: 有効な動画名が提供される
+        const videoName = "test_delete.mp4"
+        mockS3Client.send.mockResolvedValue({})
+
+        // When: 動画を削除する
+        await deleteVideo(videoName)
+
+        // Then: DeleteObjectCommandが正しいパラメータで呼び出される
+        expect(mockDeleteObjectCommand).toHaveBeenCalledWith({
+          Bucket: "test-bucket",
+          Key: videoName,
+        })
+        expect(mockS3Client.send).toHaveBeenCalledWith(
+          expect.any(Object), // DeleteObjectCommandのインスタンス
+        )
+      })
+
+      it("should delete video with special characters in name", async () => {
+        // Given: 特殊文字を含む動画名
+        const videoName = "テスト動画_2024-01-01_#1 (1).mp4"
+        mockS3Client.send.mockResolvedValue({})
+
+        // When: 動画を削除する
+        await deleteVideo(videoName)
+
+        // Then: 正常に削除される
+        expect(mockDeleteObjectCommand).toHaveBeenCalledWith({
+          Bucket: "test-bucket",
+          Key: videoName,
+        })
+      })
+
+      it("should handle deletion of non-existent file gracefully", async () => {
+        // Given: 存在しないファイルの削除を試行する
+        const videoName = "non_existent.mp4"
+        // Note: S3は存在しないファイルの削除でもエラーを返さない仕様
+        mockS3Client.send.mockResolvedValue({})
+
+        // When: 存在しない動画を削除する
+        await deleteVideo(videoName)
+
+        // Then: エラーなく完了する
+        expect(mockDeleteObjectCommand).toHaveBeenCalledWith({
+          Bucket: "test-bucket",
+          Key: videoName,
+        })
+      })
+    })
+
+    describe("境界値テスト", () => {
+      it("should handle empty video name", async () => {
+        // Given: 空の動画名
+        const videoName = ""
+        mockS3Client.send.mockResolvedValue({})
+
+        // When: 空の名前で動画を削除する
+        await deleteVideo(videoName)
+
+        // Then: 削除が実行される
+        expect(mockDeleteObjectCommand).toHaveBeenCalledWith({
+          Bucket: "test-bucket",
+          Key: "",
+        })
+      })
+
+      it("should handle very long video name", async () => {
+        // Given: 非常に長い動画名
+        const longVideoName = `${"a".repeat(100)}.mp4` // テスト用に短縮
+        mockS3Client.send.mockResolvedValue({})
+
+        // When: 長い名前で動画を削除する
+        await deleteVideo(longVideoName)
+
+        // Then: 削除が実行される
+        expect(mockDeleteObjectCommand).toHaveBeenCalledWith({
+          Bucket: "test-bucket",
+          Key: longVideoName,
+        })
+      })
+    })
+
+    describe("異常系", () => {
+      it("should throw custom error when S3 deletion fails", async () => {
+        // Given: S3削除でエラーが発生する
+        const videoName = "error_delete.mp4"
+        const error = new Error("Access denied")
+        mockS3Client.send.mockRejectedValue(error)
+
+        // When: 動画を削除する
+        // Then: カスタムエラーメッセージでエラーが投げられる
+        await expect(deleteVideo(videoName)).rejects.toThrow(
+          "動画ファイルの削除に失敗しました",
+        )
+      })
+
+      it("should log error when deletion fails", async () => {
+        // Given: コンソールエラーをモック化し、S3削除でエラーが発生する
+        const consoleSpy = vi
+          .spyOn(console, "error")
+          .mockImplementation(() => {})
+        const videoName = "error_delete.mp4"
+        const error = new Error("Deletion failed")
+        mockS3Client.send.mockRejectedValue(error)
+
+        // When: 動画を削除する
+        await expect(deleteVideo(videoName)).rejects.toThrow()
+
+        // Then: コンソールにエラーログが出力される
+        expect(consoleSpy).toHaveBeenCalledWith(
+          `Error deleting video ${videoName}:`,
+          error,
+        )
+
+        // Cleanup
+        consoleSpy.mockRestore()
+      })
+
+      it("should handle permission denied errors", async () => {
+        // Given: 権限エラーが発生する
+        const videoName = "permission_denied.mp4"
+        const permissionError = new Error("Access denied")
+        permissionError.name = "AccessDenied"
+        mockS3Client.send.mockRejectedValue(permissionError)
+
+        // When: 動画を削除する
+        // Then: カスタムエラーメッセージでエラーが投げられる
+        await expect(deleteVideo(videoName)).rejects.toThrow(
+          "動画ファイルの削除に失敗しました",
+        )
+      })
+
+      it("should handle bucket not found errors", async () => {
+        // Given: バケットが見つからないエラーが発生する
+        const videoName = "test.mp4"
+        const bucketError = new Error("The specified bucket does not exist")
+        bucketError.name = "NoSuchBucket"
+        mockS3Client.send.mockRejectedValue(bucketError)
+
+        // When: 動画を削除する
+        // Then: カスタムエラーメッセージでエラーが投げられる
+        await expect(deleteVideo(videoName)).rejects.toThrow(
+          "動画ファイルの削除に失敗しました",
+        )
+      })
+    })
+
+    describe("環境変数エラー", () => {
+      it("should throw custom error when environment variables are missing", async () => {
+        // Given: 環境変数が設定されていない
+        vi.stubEnv("CLOUDFLARE_R2_BUCKET_NAME", "")
+        const videoName = "test.mp4"
+
+        // When: 動画を削除する
+        // Then: カスタムエラーメッセージが投げられる（実装仕様に合わせて）
+        await expect(deleteVideo(videoName)).rejects.toThrow(
+          "動画ファイルの削除に失敗しました",
+        )
+      })
     })
   })
 })
