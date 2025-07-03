@@ -1,6 +1,8 @@
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
@@ -108,5 +110,47 @@ export async function getVideoMetadata(videoName: string) {
   } catch (error) {
     console.error(`Error getting video metadata for ${videoName}:`, error)
     throw new Error("動画ファイル情報の取得に失敗しました")
+  }
+}
+
+// 動画ファイルをアップロード
+export async function uploadVideo(
+  videoName: string,
+  fileBuffer: Buffer,
+  contentType: string,
+): Promise<void> {
+  try {
+    const client = getR2Client()
+    const config = getR2Config()
+
+    const command = new PutObjectCommand({
+      Bucket: config.bucketName,
+      Key: videoName,
+      Body: fileBuffer,
+      ContentType: contentType,
+    })
+
+    await client.send(command)
+  } catch (error) {
+    console.error(`Error uploading video ${videoName}:`, error)
+    throw new Error("動画ファイルのアップロードに失敗しました")
+  }
+}
+
+// 動画ファイルを削除
+export async function deleteVideo(videoName: string): Promise<void> {
+  try {
+    const client = getR2Client()
+    const config = getR2Config()
+
+    const command = new DeleteObjectCommand({
+      Bucket: config.bucketName,
+      Key: videoName,
+    })
+
+    await client.send(command)
+  } catch (error) {
+    console.error(`Error deleting video ${videoName}:`, error)
+    throw new Error("動画ファイルの削除に失敗しました")
   }
 }

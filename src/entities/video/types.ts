@@ -22,3 +22,13 @@ export interface UpdateVideoData {
   name: string
   type: VideoType
 }
+
+export interface CreateVideoWithFileData extends CreateVideoData {
+  file: File
+  playerIds: number[]
+}
+
+export interface UpdateVideoWithFileData extends UpdateVideoData {
+  file?: File
+  playerIds: number[]
+}

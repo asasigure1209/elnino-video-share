@@ -4,6 +4,12 @@ import {
   getSheetData,
   updateSheetData,
 } from "../../shared/api/google-sheets"
+import { getPlayers } from "../player/api"
+import {
+  createPlayerVideo,
+  deletePlayerVideo,
+  getPlayerVideos,
+} from "../player-video/api"
 import type { CreateVideoData, UpdateVideoData, Video } from "./types"
 
 const SHEET_NAME = "videos"
@@ -108,6 +114,14 @@ export async function deleteVideo(id: number): Promise<void> {
       throw new Error("指定された動画が見つかりません")
     }
 
+    // 関連するプレイヤー-動画マッピングも削除
+    const playerVideos = await getPlayerVideos()
+    const relatedMappings = playerVideos.filter((pv) => pv.video_id === id)
+
+    for (const mapping of relatedMappings) {
+      await deletePlayerVideo(mapping.id)
+    }
+
     // スプレッドシートの該当行のnameを空にして無効化
     const rowNumber = videoIndex + 2
     await updateSheetData(SHEET_NAME, `B${rowNumber}`, [[""]])
@@ -121,5 +135,94 @@ export async function deleteVideo(id: number): Promise<void> {
       throw error
     }
     throw new Error("動画の削除に失敗しました")
+  }
+}
+
+// 管理者用：プレイヤー情報付きの動画一覧を取得
+export interface VideoWithPlayers extends Video {
+  players: Array<{ id: number; name: string }>
+}
+
+export const getVideosWithPlayers = cache(
+  async (): Promise<VideoWithPlayers[]> => {
+    try {
+      const [videos, players, playerVideos] = await Promise.all([
+        getVideos(),
+        getPlayers(),
+        getPlayerVideos(),
+      ])
+
+      return videos.map((video) => {
+        // この動画に紐付いているプレイヤーを取得
+        const relatedPlayerIds = playerVideos
+          .filter((pv) => pv.video_id === video.id)
+          .map((pv) => pv.player_id)
+
+        const relatedPlayers = players.filter((player) =>
+          relatedPlayerIds.includes(player.id),
+        )
+
+        return {
+          ...video,
+          players: relatedPlayers,
+        }
+      })
+    } catch (error) {
+      console.error("Error fetching videos with players:", error)
+      throw new Error("動画とプレイヤー情報の取得に失敗しました")
+    }
+  },
+)
+
+// 動画作成とプレイヤー紐付けを一括で行う
+export async function createVideoWithPlayers(
+  data: CreateVideoData,
+  playerIds: number[],
+): Promise<Video> {
+  try {
+    // 動画を作成
+    const video = await createVideo(data)
+
+    // プレイヤーとの紐付けを作成
+    for (const playerId of playerIds) {
+      await createPlayerVideo({
+        player_id: playerId,
+        video_id: video.id,
+      })
+    }
+
+    return video
+  } catch (error) {
+    console.error("Error creating video with players:", error)
+    throw new Error("動画とプレイヤー紐付けの作成に失敗しました")
+  }
+}
+
+// 動画のプレイヤー紐付けを更新
+export async function updateVideoPlayers(
+  videoId: number,
+  playerIds: number[],
+): Promise<void> {
+  try {
+    // 既存の紐付けを削除
+    const playerVideos = await getPlayerVideos()
+    const existingMappings = playerVideos.filter(
+      (pv) => pv.video_id === videoId,
+    )
+
+    for (const mapping of existingMappings) {
+      await deletePlayerVideo(mapping.id)
+    }
+
+    // 新しい紐付けを作成
+    for (const playerId of playerIds) {
+      await createPlayerVideo({
+        player_id: playerId,
+        video_id: videoId,
+      })
+    }
+  } catch (error) {
+    console.error("Error updating video players:", error)
+    throw new Error("動画のプレイヤー紐付け更新に失敗しました")
   }
 }
