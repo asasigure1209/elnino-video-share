@@ -219,12 +219,15 @@ export function EditVideoForm({
       const performUpload = async () => {
         try {
           // Step 2: Upload to R2
-          await handleUploadToR2(uploadUrlState.uploadUrl!, selectedFile)
+          if (!uploadUrlState.uploadUrl || !uploadUrlState.videoName) {
+            throw new Error("アップロードURLまたは動画名が無効です")
+          }
+          await handleUploadToR2(uploadUrlState.uploadUrl, selectedFile)
 
           // Step 3: Confirm upload
           const confirmFormData = new FormData()
           confirmFormData.append("id", video.id.toString())
-          confirmFormData.append("videoName", uploadUrlState.videoName!)
+          confirmFormData.append("videoName", uploadUrlState.videoName)
           confirmFormData.append("type", selectedType)
           confirmFormData.append("oldVideoName", video.name)
           selectedPlayers.forEach((playerId) => {

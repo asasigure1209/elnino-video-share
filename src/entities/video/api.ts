@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache"
 import { cache } from "react"
 import {
   appendSheetData,
@@ -14,8 +15,8 @@ import type { CreateVideoData, UpdateVideoData, Video } from "./types"
 
 const SHEET_NAME = "videos"
 
-// 動画一覧を取得（キャッシュ付き）
-export const getVideos = cache(async (): Promise<Video[]> => {
+// 動画一覧を取得（拡張キャッシュ付き）
+const getVideosUncached = async (): Promise<Video[]> => {
   try {
     const rows = await getSheetData(SHEET_NAME)
 
@@ -33,7 +34,18 @@ export const getVideos = cache(async (): Promise<Video[]> => {
     console.error("Error fetching videos:", error)
     throw new Error("動画データの取得に失敗しました")
   }
-})
+}
+
+// 1時間キャッシュ + React cache の二重キャッシュ（テスト環境では従来のキャッシュのみ）
+export const getVideos =
+  process.env.NODE_ENV === "test"
+    ? cache(getVideosUncached)
+    : cache(
+        unstable_cache(getVideosUncached, ["videos"], {
+          revalidate: 3600,
+          tags: ["videos"],
+        }),
+      )
 
 // IDで動画を取得
 export const getVideoById = cache(async (id: number): Promise<Video | null> => {
