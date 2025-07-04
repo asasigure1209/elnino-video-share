@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache"
 import { cache } from "react"
 import {
   appendSheetData,
@@ -9,8 +10,8 @@ import type { CreatePlayerData, Player, UpdatePlayerData } from "./types"
 
 const SHEET_NAME = "players"
 
-// プレイヤー一覧を取得（キャッシュ付き）
-export const getPlayers = cache(async (): Promise<Player[]> => {
+// プレイヤー一覧を取得（拡張キャッシュ付き）
+const getPlayersUncached = async (): Promise<Player[]> => {
   try {
     const rows = await getSheetData(SHEET_NAME)
 
@@ -27,7 +28,18 @@ export const getPlayers = cache(async (): Promise<Player[]> => {
     console.error("Error fetching players:", error)
     throw new Error("プレイヤーデータの取得に失敗しました")
   }
-})
+}
+
+// 1時間キャッシュ + React cache の二重キャッシュ（テスト環境では従来のキャッシュのみ）
+export const getPlayers =
+  process.env.NODE_ENV === "test"
+    ? cache(getPlayersUncached)
+    : cache(
+        unstable_cache(getPlayersUncached, ["players"], {
+          revalidate: 3600,
+          tags: ["players"],
+        }),
+      )
 
 // IDでプレイヤーを取得
 export const getPlayerById = cache(

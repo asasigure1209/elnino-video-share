@@ -154,3 +154,55 @@ export async function deleteVideo(videoName: string): Promise<void> {
     throw new Error("動画ファイルの削除に失敗しました")
   }
 }
+
+// 動画のアップロード用署名付きURLを生成
+export async function generatePresignedUploadUrl(
+  videoName: string,
+  contentType: string,
+  expiresIn: number = 600, // デフォルト10min
+): Promise<string> {
+  try {
+    const client = getR2Client()
+    const config = getR2Config()
+
+    const command = new PutObjectCommand({
+      Bucket: config.bucketName,
+      Key: videoName,
+      ContentType: contentType,
+    })
+
+    const signedUrl = await getSignedUrl(client, command, {
+      expiresIn,
+    })
+
+    return signedUrl
+  } catch (error) {
+    console.error(`Error generating upload URL for ${videoName}:`, error)
+    throw new Error("動画のアップロードURLの生成に失敗しました")
+  }
+}
+
+// 動画の削除用署名付きURLを生成
+export async function generatePresignedDeleteUrl(
+  videoName: string,
+  expiresIn: number = 3600, // デフォルト1時間
+): Promise<string> {
+  try {
+    const client = getR2Client()
+    const config = getR2Config()
+
+    const command = new DeleteObjectCommand({
+      Bucket: config.bucketName,
+      Key: videoName,
+    })
+
+    const signedUrl = await getSignedUrl(client, command, {
+      expiresIn,
+    })
+
+    return signedUrl
+  } catch (error) {
+    console.error(`Error generating delete URL for ${videoName}:`, error)
+    throw new Error("動画の削除URLの生成に失敗しました")
+  }
+}
