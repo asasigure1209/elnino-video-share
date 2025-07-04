@@ -159,7 +159,7 @@ export async function deleteVideo(videoName: string): Promise<void> {
 export async function generatePresignedUploadUrl(
   videoName: string,
   contentType: string,
-  expiresIn: number = 600, // デフォルト10min
+  expiresIn: number = 7200, // デフォルト2時間
 ): Promise<string> {
   try {
     const client = getR2Client()
