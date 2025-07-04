@@ -38,9 +38,17 @@ export function VideoList({ videos }: VideoListProps) {
       {/* ヘッダー */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-on-primary">動画</h2>
-        <Button href="/admin/videos/new" className="px-4 py-2">
-          新規作成
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            href="/admin/videos/bulk"
+            className="px-4 py-2 bg-secondary text-white"
+          >
+            一括アップロード
+          </Button>
+          <Button href="/admin/videos/new" className="px-4 py-2">
+            新規作成
+          </Button>
+        </div>
       </div>
 
       {/* 動画一覧テーブル */}
