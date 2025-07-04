@@ -7,6 +7,7 @@ interface ButtonProps {
   variant?: "primary"
   size?: "sm" | "md" | "lg"
   className?: string
+  download?: string
   disabled?: boolean
   type?: "button" | "submit" | "reset"
 }
@@ -19,6 +20,7 @@ export function Button({
   size = "md",
   className = "",
   disabled = false,
+  download = undefined,
   type = "button",
 }: ButtonProps) {
   const baseClasses = "font-bold rounded transition-colors duration-200"
@@ -36,9 +38,17 @@ export function Button({
   const disabledClasses = disabled ? "opacity-50 cursor-not-allowed" : ""
   const allClasses = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${disabledClasses} ${className}`
 
-  if (href) {
+  if (href && !download) {
     return (
       <a href={href} className={allClasses}>
+        {children}
+      </a>
+    )
+  }
+
+  if (href && download) {
+    return (
+      <a href={href} className={allClasses} download={download}>
         {children}
       </a>
     )

@@ -29,9 +29,14 @@ export const revalidate = 3600;
 
 export default async function PlayerPage({ params }: PageProps) {
   const { id } = await params;
+  const playerId = Number(id);
+
+  const players = await getPlayers();
+  const targetPlayer = players.find((player) => player.id === playerId);
+
   return (
     <MainLayout>
-      <PlayerDetailPage playerId={id} />
+      <PlayerDetailPage player={targetPlayer} />
     </MainLayout>
   );
 }
