@@ -5,9 +5,9 @@ export function VideoList({ videos }: { videos: string[] }) {
     <div className="w-full">
       <div className="space-y-3">
         <div className="text-center">
-          <h2 className="text-on-surface text-lg font-bold border-b border-on-surface pb-2">
+          <h3 className="text-on-surface text-lg font-bold border-b border-on-surface pb-2">
             動画一覧
-          </h2>
+          </h3>
         </div>
         {videos.length === 0 && (
           <div className="text-center py-8">

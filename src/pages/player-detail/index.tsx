@@ -17,7 +17,7 @@ export async function PlayerDetailPage({
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto px-4 py-8">
+    <div className="w-full max-w-2xl mx-auto">
       {/* プレイヤー名表示 */}
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-on-primary">{player.name}</h2>
