@@ -1,6 +1,7 @@
 export interface Player {
   id: number
   name: string
+  videos: string[]
 }
 
 export interface CreatePlayerData {
