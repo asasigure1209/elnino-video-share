@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import * as googleSheetsApi from "../../shared/api/google-sheets"
 import {
   createVideo,
+  createVideos,
   deleteVideo,
   getVideoById,
   getVideos,
@@ -210,6 +211,90 @@ describe("Video API", () => {
 
       await expect(deleteVideo(999)).rejects.toThrow(
         "指定された動画が見つかりません",
+      )
+    })
+  })
+
+  describe("createVideos", () => {
+    it("複数の動画を一括作成できる", async () => {
+      const mockData = [
+        ["id", "name", "type"],
+        [1, "DFSC0001.mp4", "予選"],
+        [2, "DFSC0002.mp4", "TOP16"],
+      ]
+      mockGetSheetData.mockResolvedValue(mockData)
+      mockAppendSheetData.mockResolvedValue({})
+
+      const dataList = [
+        { name: "DFSC0003.mp4", type: "TOP8" as const },
+        { name: "DFSC0004.mp4", type: "TOP4" as const },
+        { name: "DFSC0005.mp4", type: "決勝戦" as const },
+      ]
+
+      const result = await createVideos(dataList)
+
+      expect(mockGetSheetData).toHaveBeenCalledWith("videos")
+      expect(mockAppendSheetData).toHaveBeenCalledWith("videos", [
+        [3, "DFSC0003.mp4", "TOP8"],
+        [4, "DFSC0004.mp4", "TOP4"],
+        [5, "DFSC0005.mp4", "決勝戦"],
+      ])
+      expect(result).toEqual([
+        { id: 3, name: "DFSC0003.mp4", type: "TOP8" },
+        { id: 4, name: "DFSC0004.mp4", type: "TOP4" },
+        { id: 5, name: "DFSC0005.mp4", type: "決勝戦" },
+      ])
+    })
+
+    it("空のデータ一覧でも正常に動作する", async () => {
+      const result = await createVideos([])
+
+      expect(mockGetSheetData).not.toHaveBeenCalled()
+      expect(mockAppendSheetData).not.toHaveBeenCalled()
+      expect(result).toEqual([])
+    })
+
+    it("動画が存在しない場合でも連番のIDを正しく作成する", async () => {
+      const mockData = [["id", "name", "type"]] // ヘッダーのみ
+      mockGetSheetData.mockResolvedValue(mockData)
+      mockAppendSheetData.mockResolvedValue({})
+
+      const dataList = [
+        { name: "DFSC0001.mp4", type: "予選" as const },
+        { name: "DFSC0002.mp4", type: "TOP16" as const },
+      ]
+
+      const result = await createVideos(dataList)
+
+      expect(mockAppendSheetData).toHaveBeenCalledWith("videos", [
+        [1, "DFSC0001.mp4", "予選"],
+        [2, "DFSC0002.mp4", "TOP16"],
+      ])
+      expect(result).toEqual([
+        { id: 1, name: "DFSC0001.mp4", type: "予選" },
+        { id: 2, name: "DFSC0002.mp4", type: "TOP16" },
+      ])
+    })
+
+    it("シートデータ取得エラー時に適切なエラーを投げる", async () => {
+      mockGetSheetData.mockRejectedValue(new Error("Sheet access error"))
+
+      const dataList = [{ name: "test.mp4", type: "予選" as const }]
+
+      await expect(createVideos(dataList)).rejects.toThrow(
+        "動画の一括作成に失敗しました",
+      )
+    })
+
+    it("シートデータ挿入エラー時に適切なエラーを投げる", async () => {
+      const mockData = [["id", "name", "type"]]
+      mockGetSheetData.mockResolvedValue(mockData)
+      mockAppendSheetData.mockRejectedValue(new Error("Sheet insert error"))
+
+      const dataList = [{ name: "test.mp4", type: "予選" as const }]
+
+      await expect(createVideos(dataList)).rejects.toThrow(
+        "動画の一括作成に失敗しました",
       )
     })
   })

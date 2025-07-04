@@ -6,6 +6,15 @@ export type VideoType =
   | "3位決定戦"
   | "決勝戦"
 
+export const VIDEO_TYPES: VideoType[] = [
+  "予選",
+  "TOP16",
+  "TOP8",
+  "TOP4",
+  "3位決定戦",
+  "決勝戦",
+]
+
 export interface Video {
   id: number
   name: string

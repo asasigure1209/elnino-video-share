@@ -80,6 +80,37 @@ export async function createVideo(data: CreateVideoData): Promise<Video> {
   }
 }
 
+// 複数の動画を一括作成（一括アップロード用）
+export async function createVideos(
+  dataList: CreateVideoData[],
+): Promise<Video[]> {
+  try {
+    if (dataList.length === 0) {
+      return []
+    }
+
+    // 現在の動画一覧を取得して、開始IDを計算
+    const videos = await getVideos()
+    const baseId = videos.length > 0 ? Math.max(...videos.map((v) => v.id)) : 0
+
+    // 連番IDでデータを準備
+    const newVideos = dataList.map((data, index) => ({
+      id: baseId + index + 1,
+      name: data.name,
+      type: data.type,
+    }))
+
+    // 一括でスプレッドシートに挿入
+    const rows = newVideos.map((video) => [video.id, video.name, video.type])
+    await appendSheetData(SHEET_NAME, rows)
+
+    return newVideos
+  } catch (error) {
+    console.error("Error creating videos:", error)
+    throw new Error("動画の一括作成に失敗しました")
+  }
+}
+
 // 動画情報を更新
 export async function updateVideo(data: UpdateVideoData): Promise<Video> {
   try {

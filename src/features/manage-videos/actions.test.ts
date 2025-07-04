@@ -2,17 +2,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 // vitest hoisted で定義したモック
 const mockCreateVideoWithPlayers = vi.hoisted(() => vi.fn())
+const mockCreateVideos = vi.hoisted(() => vi.fn())
 const mockDeleteVideo = vi.hoisted(() => vi.fn())
 const mockGetVideoById = vi.hoisted(() => vi.fn())
 const mockUpdateVideo = vi.hoisted(() => vi.fn())
 const mockUpdateVideoPlayers = vi.hoisted(() => vi.fn())
 const mockDeleteVideoFromR2 = vi.hoisted(() => vi.fn())
 const mockUploadVideo = vi.hoisted(() => vi.fn())
+const mockCheckVideoExists = vi.hoisted(() => vi.fn())
+const mockGeneratePresignedUploadUrl = vi.hoisted(() => vi.fn())
 const mockRevalidatePath = vi.hoisted(() => vi.fn())
 
 // entities/video/api のモック
 vi.mock("../../entities/video/api", () => ({
   createVideoWithPlayers: mockCreateVideoWithPlayers,
+  createVideos: mockCreateVideos,
   deleteVideo: mockDeleteVideo,
   getVideoById: mockGetVideoById,
   updateVideo: mockUpdateVideo,
@@ -21,7 +25,9 @@ vi.mock("../../entities/video/api", () => ({
 
 // shared/api/cloudflare-r2 のモック
 vi.mock("../../shared/api/cloudflare-r2", () => ({
+  checkVideoExists: mockCheckVideoExists,
   deleteVideo: mockDeleteVideoFromR2,
+  generatePresignedUploadUrl: mockGeneratePresignedUploadUrl,
   uploadVideo: mockUploadVideo,
 }))
 
@@ -721,6 +727,151 @@ describe("manage-videos actions", () => {
           success: false,
           error: "Database connection failed",
         })
+      })
+    })
+  })
+
+  describe("bulkConfirmUploadsAction", () => {
+    it("複数動画の一括登録が正常に動作する", async () => {
+      // Given: フォームデータを準備
+      const formData = new FormData()
+      formData.append("type", "予選")
+      formData.append("videoNames", "video1.mp4")
+      formData.append("videoNames", "video2.mp4")
+      formData.append("videoNames", "video3.mp4")
+
+      // R2ファイル存在チェックのモック
+      mockCheckVideoExists.mockResolvedValue(true)
+
+      // createVideos のモック
+      mockCreateVideos.mockResolvedValue([
+        { id: 1, name: "video1.mp4", type: "予選" },
+        { id: 2, name: "video2.mp4", type: "予選" },
+        { id: 3, name: "video3.mp4", type: "予選" },
+      ])
+
+      // Dynamic import のモック
+      const { bulkConfirmUploadsAction } = await import("./actions")
+
+      // When: 一括確認アクションを実行
+      const result = await bulkConfirmUploadsAction(null, formData)
+
+      // Then: 正常に動画が作成される
+      expect(mockCheckVideoExists).toHaveBeenCalledTimes(3)
+      expect(mockCheckVideoExists).toHaveBeenCalledWith("video1.mp4")
+      expect(mockCheckVideoExists).toHaveBeenCalledWith("video2.mp4")
+      expect(mockCheckVideoExists).toHaveBeenCalledWith("video3.mp4")
+
+      expect(mockCreateVideos).toHaveBeenCalledWith([
+        { name: "video1.mp4", type: "予選" },
+        { name: "video2.mp4", type: "予選" },
+        { name: "video3.mp4", type: "予選" },
+      ])
+
+      expect(mockRevalidatePath).toHaveBeenCalledWith("/admin/videos")
+
+      expect(result).toEqual({
+        success: true,
+        videos: [
+          { id: 1, name: "video1.mp4", type: "予選" },
+          { id: 2, name: "video2.mp4", type: "予選" },
+          { id: 3, name: "video3.mp4", type: "予選" },
+        ],
+      })
+    })
+
+    it("アップロードが未完了のファイルがある場合エラーを返す", async () => {
+      // Given: フォームデータを準備
+      const formData = new FormData()
+      formData.append("type", "TOP16")
+      formData.append("videoNames", "video1.mp4")
+      formData.append("videoNames", "video2.mp4")
+
+      // 一つのファイルが存在しない
+      mockCheckVideoExists
+        .mockResolvedValueOnce(true) // video1.mp4
+        .mockResolvedValueOnce(false) // video2.mp4
+
+      // Dynamic import のモック
+      const { bulkConfirmUploadsAction } = await import("./actions")
+
+      // When: 一括確認アクションを実行
+      const result = await bulkConfirmUploadsAction(null, formData)
+
+      // Then: エラーが返される
+      expect(result).toEqual({
+        success: false,
+        error: "以下のファイルのアップロードが完了していません:\nvideo2.mp4",
+      })
+
+      expect(mockCreateVideos).not.toHaveBeenCalled()
+    })
+
+    it("動画タイプが未選択の場合エラーを返す", async () => {
+      // Given: タイプが空のフォームデータ
+      const formData = new FormData()
+      formData.append("type", "")
+      formData.append("videoNames", "video1.mp4")
+
+      // Dynamic import のモック
+      const { bulkConfirmUploadsAction } = await import("./actions")
+
+      // When: 一括確認アクションを実行
+      const result = await bulkConfirmUploadsAction(null, formData)
+
+      // Then: エラーが返される
+      expect(result).toEqual({
+        success: false,
+        error: "動画タイプを選択してください",
+      })
+
+      expect(mockCheckVideoExists).not.toHaveBeenCalled()
+      expect(mockCreateVideos).not.toHaveBeenCalled()
+    })
+
+    it("登録する動画が選択されていない場合エラーを返す", async () => {
+      // Given: 動画名が空のフォームデータ
+      const formData = new FormData()
+      formData.append("type", "TOP8")
+
+      // Dynamic import のモック
+      const { bulkConfirmUploadsAction } = await import("./actions")
+
+      // When: 一括確認アクションを実行
+      const result = await bulkConfirmUploadsAction(null, formData)
+
+      // Then: エラーが返される
+      expect(result).toEqual({
+        success: false,
+        error: "登録する動画が選択されていません",
+      })
+
+      expect(mockCheckVideoExists).not.toHaveBeenCalled()
+      expect(mockCreateVideos).not.toHaveBeenCalled()
+    })
+
+    it("createVideosでエラーが発生した場合適切にハンドリングする", async () => {
+      // Given: フォームデータを準備
+      const formData = new FormData()
+      formData.append("type", "決勝戦")
+      formData.append("videoNames", "final.mp4")
+
+      // R2ファイル存在チェックのモック
+      mockCheckVideoExists.mockResolvedValue(true)
+
+      // createVideos がエラーを投げる
+      mockCreateVideos.mockRejectedValue(new Error("Database error"))
+
+      // Dynamic import のモック
+      const { bulkConfirmUploadsAction } = await import("./actions")
+
+      // When: 一括確認アクションを実行
+      const result = await bulkConfirmUploadsAction(null, formData)
+
+      // Then: エラーが返される
+      expect(result).toEqual({
+        success: false,
+        error: "Database error",
       })
     })
   })

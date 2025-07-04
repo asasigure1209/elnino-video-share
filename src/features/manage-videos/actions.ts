@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import {
+  createVideos,
   createVideoWithPlayers,
   deleteVideo,
   getVideoById,
@@ -598,6 +599,187 @@ export async function confirmUpdateUploadAction(
       success: false,
       error:
         error instanceof Error ? error.message : "動画の更新に失敗しました",
+    }
+  }
+}
+
+// 一括アップロード用の型定義
+export interface BulkUploadItem {
+  file: File
+  fileName: string
+  contentType: string
+  fileSize: number
+}
+
+export interface BulkGenerateUrlsState extends ActionResult {
+  uploadItems?: Array<{
+    fileName: string
+    uploadUrl: string
+  }>
+}
+
+export interface BulkConfirmUploadsState extends ActionResult {
+  videos?: Array<{ id: number; name: string; type: string }>
+}
+
+// 一括アップロード用署名付きURL生成
+export async function bulkGenerateUploadUrlsAction(
+  _prevState: BulkGenerateUrlsState | null,
+  formData: FormData,
+): Promise<BulkGenerateUrlsState> {
+  try {
+    // ファイル情報を取得
+    const fileCount = Number(formData.get("fileCount"))
+    const uploadItems: BulkUploadItem[] = []
+
+    for (let i = 0; i < fileCount; i++) {
+      const fileName = formData.get(`fileName_${i}`) as string
+      const contentType = formData.get(`contentType_${i}`) as string
+      const fileSize = Number(formData.get(`fileSize_${i}`))
+
+      if (fileName && contentType && fileSize > 0) {
+        uploadItems.push({
+          fileName,
+          contentType,
+          fileSize,
+        } as BulkUploadItem)
+      }
+    }
+
+    if (uploadItems.length === 0) {
+      return {
+        success: false,
+        error: "アップロードするファイルが選択されていません",
+      }
+    }
+
+    // 各ファイルの検証
+    const allowedExtensions = [".mp4", ".mov", ".avi", ".mkv"]
+    const maxSize = 2 * 1024 * 1024 * 1024 // 2GB
+    const errors: string[] = []
+
+    for (const item of uploadItems) {
+      const fileExtension = item.fileName
+        .toLowerCase()
+        .slice(item.fileName.lastIndexOf("."))
+
+      if (!allowedExtensions.includes(fileExtension)) {
+        errors.push(`${item.fileName}: 対応していないファイル形式です`)
+      }
+
+      if (item.fileSize > maxSize) {
+        errors.push(`${item.fileName}: ファイルサイズが大きすぎます (最大2GB)`)
+      }
+
+      // 重複チェック
+      const exists = await checkVideoExists(item.fileName)
+      if (exists) {
+        errors.push(`${item.fileName}: 同じファイル名の動画が既に存在します`)
+      }
+    }
+
+    if (errors.length > 0) {
+      return {
+        success: false,
+        error: errors.join("\n"),
+      }
+    }
+
+    // 署名付きURLを生成
+    const uploadUrls = await Promise.all(
+      uploadItems.map(async (item) => ({
+        fileName: item.fileName,
+        uploadUrl: await generatePresignedUploadUrl(
+          item.fileName,
+          item.contentType,
+        ),
+      })),
+    )
+
+    return {
+      success: true,
+      uploadItems: uploadUrls,
+    }
+  } catch (error) {
+    console.error("Error in bulkGenerateUploadUrlsAction:", error)
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "一括アップロードURLの生成に失敗しました",
+    }
+  }
+}
+
+// 一括アップロード完了確認
+export async function bulkConfirmUploadsAction(
+  _prevState: BulkConfirmUploadsState | null,
+  formData: FormData,
+): Promise<BulkConfirmUploadsState> {
+  try {
+    const type = formData.get("type") as string
+    const fileNames = formData.getAll("videoNames") as string[]
+
+    // バリデーション
+    if (!type || typeof type !== "string" || type.trim().length === 0) {
+      return {
+        success: false,
+        error: "動画タイプを選択してください",
+      }
+    }
+
+    if (fileNames.length === 0) {
+      return {
+        success: false,
+        error: "登録する動画が選択されていません",
+      }
+    }
+
+    // 各動画ファイルがR2に存在することを確認
+    const uploadChecks = await Promise.all(
+      fileNames.map(async (fileName) => {
+        const exists = await checkVideoExists(fileName)
+        return { fileName, exists }
+      }),
+    )
+
+    const missingFiles = uploadChecks
+      .filter((check) => !check.exists)
+      .map((check) => check.fileName)
+
+    if (missingFiles.length > 0) {
+      return {
+        success: false,
+        error: `以下のファイルのアップロードが完了していません:\n${missingFiles.join(", ")}`,
+      }
+    }
+
+    // データベースに動画を一括登録（プレイヤー紐付けなし）
+    const videoDataList = fileNames.map((fileName) => ({
+      name: fileName,
+      type: type as VideoType,
+    }))
+
+    const videos = await createVideos(videoDataList)
+
+    // キャッシュを再検証
+    revalidatePath("/admin/videos")
+
+    return {
+      success: true,
+      videos: videos.map((video) => ({
+        id: video.id,
+        name: video.name,
+        type: video.type,
+      })),
+    }
+  } catch (error) {
+    console.error("Error in bulkConfirmUploadsAction:", error)
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "一括動画登録に失敗しました",
     }
   }
 }
