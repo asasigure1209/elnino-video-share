@@ -17,7 +17,7 @@ export function MainLayout({ children }: MainLayoutProps) {
           <div className="text-center">
             <Image
               src="/mainLogo.svg"
-              alt="エルニーニョ vol.10"
+              alt="RECSTAR"
               width={400}
               height={120}
               className="mx-auto max-w-full h-auto"
