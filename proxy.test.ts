@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
-import { middleware } from "./middleware";
+import { proxy } from "./proxy";
 
-describe("middleware", () => {
+describe("proxy", () => {
   beforeEach(() => {
     // Given: 各テスト前に環境変数とモックをリセット
     vi.clearAllMocks();
@@ -19,8 +19,8 @@ describe("middleware", () => {
       // Given: /adminパスへのリクエストで認証ヘッダーなし
       const request = new NextRequest("http://localhost:3000/admin");
 
-      // When: middlewareを実行する
-      const response = middleware(request);
+      // When: proxyを実行する
+      const response = proxy(request);
 
       // Then: 401エラーと適切なヘッダーが返される
       expect(response.status).toBe(401);
@@ -39,8 +39,8 @@ describe("middleware", () => {
         },
       });
 
-      // When: middlewareを実行する
-      const response = middleware(request);
+      // When: proxyを実行する
+      const response = proxy(request);
 
       // Then: NextResponse.next()が呼ばれる（処理続行）
       expect(response).toBeDefined();
@@ -55,8 +55,8 @@ describe("middleware", () => {
         },
       });
 
-      // When: middlewareを実行する
-      const response = middleware(request);
+      // When: proxyを実行する
+      const response = proxy(request);
 
       // Then: 401エラーが返される
       expect(response.status).toBe(401);
@@ -75,8 +75,8 @@ describe("middleware", () => {
         },
       });
 
-      // When: middlewareを実行する
-      const response = middleware(request);
+      // When: proxyを実行する
+      const response = proxy(request);
 
       // Then: 401エラーが返される
       expect(response.status).toBe(401);
@@ -91,8 +91,8 @@ describe("middleware", () => {
         },
       });
 
-      // When: middlewareを実行する
-      const response = middleware(request);
+      // When: proxyを実行する
+      const response = proxy(request);
 
       // Then: 401エラーが返される（Bearer tokenはBasic認証でない）
       expect(response.status).toBe(401);
@@ -107,8 +107,8 @@ describe("middleware", () => {
         },
       });
 
-      // When: middlewareを実行する
-      const response = middleware(request);
+      // When: proxyを実行する
+      const response = proxy(request);
 
       // Then: 401エラーが返される
       expect(response.status).toBe(401);
@@ -126,8 +126,8 @@ describe("middleware", () => {
         },
       });
 
-      // When: middlewareを実行する
-      const response = middleware(request);
+      // When: proxyを実行する
+      const response = proxy(request);
 
       // Then: 500エラーが返される
       expect(response.status).toBe(500);
@@ -138,8 +138,8 @@ describe("middleware", () => {
       // Given: /admin/playersパスへのリクエスト
       const request = new NextRequest("http://localhost:3000/admin/players");
 
-      // When: middlewareを実行する
-      const response = middleware(request);
+      // When: proxyを実行する
+      const response = proxy(request);
 
       // Then: 401エラーが返される
       expect(response.status).toBe(401);
@@ -150,8 +150,8 @@ describe("middleware", () => {
       // Given: /admin/videosパスへのリクエスト
       const request = new NextRequest("http://localhost:3000/admin/videos");
 
-      // When: middlewareを実行する
-      const response = middleware(request);
+      // When: proxyを実行する
+      const response = proxy(request);
 
       // Then: 401エラーが返される
       expect(response.status).toBe(401);
@@ -164,8 +164,8 @@ describe("middleware", () => {
       // Given: ホームページへのリクエスト
       const request = new NextRequest("http://localhost:3000/");
 
-      // When: middlewareを実行する
-      const response = middleware(request);
+      // When: proxyを実行する
+      const response = proxy(request);
 
       // Then: 認証チェックなしで処理が続行される
       expect(response).toBeDefined();
@@ -175,8 +175,8 @@ describe("middleware", () => {
       // Given: プレイヤー詳細ページへのリクエスト
       const request = new NextRequest("http://localhost:3000/players/1");
 
-      // When: middlewareを実行する
-      const response = middleware(request);
+      // When: proxyを実行する
+      const response = proxy(request);
 
       // Then: 認証チェックなしで処理が続行される
       expect(response).toBeDefined();
@@ -186,8 +186,8 @@ describe("middleware", () => {
       // Given: APIルートへのリクエスト
       const request = new NextRequest("http://localhost:3000/api/players");
 
-      // When: middlewareを実行する
-      const response = middleware(request);
+      // When: proxyを実行する
+      const response = proxy(request);
 
       // Then: 認証チェックなしで処理が続行される
       expect(response).toBeDefined();
@@ -208,8 +208,8 @@ describe("middleware", () => {
         },
       });
 
-      // When: middlewareを実行する
-      await middleware(request);
+      // When: proxyを実行する
+      await proxy(request);
 
       // Then: エラーログが出力される
       expect(consoleSpy).toHaveBeenCalledWith(
@@ -231,8 +231,8 @@ describe("middleware", () => {
         },
       });
 
-      // When: middlewareを実行する
-      await middleware(request);
+      // When: proxyを実行する
+      await proxy(request);
 
       // Then: エラーログが出力される
       expect(consoleSpy).toHaveBeenCalledWith(

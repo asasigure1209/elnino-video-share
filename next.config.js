@@ -1,10 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    // ESLintを無効化 (Biomeを使用)
-    ignoreDuringBuilds: true,
-  },
-
   experimental: {
     serverActions: {
       bodySizeLimit: "900mb",
@@ -12,4 +7,4 @@ const nextConfig = {
   },
 }
 
-module.exports = nextConfig
+export default nextConfig
