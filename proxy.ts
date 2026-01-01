@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   // /admin パスでのみBasic認証を要求
   if (request.nextUrl.pathname.startsWith("/admin")) {
     const basicAuth = request.headers.get("authorization")
